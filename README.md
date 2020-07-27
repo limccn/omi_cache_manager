@@ -18,7 +18,7 @@ $python setup.py install
 
 ```python
  # use aioredis as backend
- $pip install aio_redis
+ $pip install aioredis
 ```
 
 ```python
@@ -64,6 +64,10 @@ value = await cache.add("key", "val")
 value = await cache.delete("key")
 
 ```
+
+5.We implemented a demo api provider use [FastAPI](https://github.com/tiangolo/fastapi) to show How to use this library. and testing is included.
+
+@See [mock_fastapi.py](https://github.com/limccn/omi_cache_manager/blob/master/mock_fastapi.py) for detail
 
 ### License
 

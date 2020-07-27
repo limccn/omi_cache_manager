@@ -1,3 +1,20 @@
+"""
+Copyright 2020 limc.cn All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
 import aioredis
 from aioredis import ReplyError
 
@@ -10,6 +27,12 @@ class AIORedisContext(RedisContext):
                  timeout=3,
                  encoding="utf-8"):
         super().__init__()
+        """
+        __init__构造函数，使用参数创建一个ARedisContextPool实例对象，并返回
+        :redis_uri - str default='localhost', Redis服务器地址
+        :timeout - int or str default=None,连接Redis服务器的超市时间
+        :encoding - str default=‘utf-8’, 连接Redis服务器使用的编码格式，默认使用utf-8
+        """
         self.redis_uri = redis_uri
         self.timeout = timeout
         self.encoding = encoding
@@ -20,6 +43,10 @@ class AIORedisContext(RedisContext):
         return self._conn_or_pool
 
     async def create(self):
+        """
+        Proxy function for internal cache object.
+        @See CacheContext.create
+        """
         self._conn_or_pool = await aioredis.create_redis(
             address=self.redis_uri,
             timeout=self.timeout,
@@ -27,6 +54,10 @@ class AIORedisContext(RedisContext):
         )
 
     async def destroy(self):
+        """
+        Proxy function for internal cache object.
+        @See CacheContext.destroy
+        """
         if not self._conn_or_pool:
             return
         self._conn_or_pool.close()
@@ -40,6 +71,14 @@ class AIORedisContextPool(AIORedisContext):
                  encoding="utf-8",
                  minsize=0,
                  maxsize=50):
+        """
+        __init__构造函数，使用参数创建一个ARedisContextPool实例对象，并返回
+        :redis_uri - str default='localhost', Redis服务器地址
+        :timeout - int or str default=None,连接Redis服务器的超市时间
+        :encoding - str default=‘utf-8’, 连接Redis服务器使用的编码格式，默认使用utf-8
+        :minsize - int default=0,Redis连接池的最小Size
+        :maxsize - int default=50,Redis连接池的最大Size
+        """
         super().__init__(redis_uri=redis_uri,
                          timeout=timeout,
                          encoding=encoding)
@@ -47,6 +86,10 @@ class AIORedisContextPool(AIORedisContext):
         self.maxsize = maxsize
 
     async def create(self):
+        """
+        Proxy function for internal cache object.
+        @See CacheContext.create
+        """
         self._conn_or_pool = await aioredis.create_redis_pool(
             address=self.redis_uri,
             encoding=self.encoding,
@@ -92,12 +135,23 @@ class AIORedisBackend(RedisBackend):
             )
 
     def get_async_context(self):
+        """
+        Implement function from RedisBackend interface
+        @See RedisBackend.get_async_context
+        """
         return self.get_cache_context()
 
     def make_key(self, key):
+        """
+        生成key，使用f"{self.key_prefix}{key}"
+        """
         return f"{self.key_prefix}{key}"
 
     async def get(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.get
+        """
         if len(args) == 1 and len(kwargs) == 0:
             key = self.make_key(args[0])
         elif len(args) == 0 and len(kwargs) == 1:
@@ -108,7 +162,10 @@ class AIORedisBackend(RedisBackend):
             return await conn.get(key)
 
     async def set(self, *args, **kwargs):
-
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.set
+        """
         expire = kwargs.get("expire", 0)
         pexpire = kwargs.get("pexpire", 0)
         exist = kwargs.get("exist", None)
@@ -151,6 +208,10 @@ class AIORedisBackend(RedisBackend):
         return await self.set(*args, **kwargs)
 
     async def delete(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.delete
+        """
         if len(args) == 1 and len(kwargs) == 0:
             key = self.make_key(args[0])
         elif len(args) == 0 and len(kwargs) == 1:
@@ -162,6 +223,10 @@ class AIORedisBackend(RedisBackend):
         return result > 0
 
     async def delete_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.delete_many
+        """
         keys = []
         for i in range(len(args)):
             key = self.make_key(args[i])
@@ -175,6 +240,10 @@ class AIORedisBackend(RedisBackend):
         return result > 0
 
     async def get_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.get_many
+        """
         keys = []
         for i in range(len(args)):
             key = self.make_key(args[i])
@@ -187,6 +256,10 @@ class AIORedisBackend(RedisBackend):
         return result
 
     async def set_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.set_many
+        """
         kv2update = {
             **{self.make_key(k): v for k, v in dict(args).items()},
             **{self.make_key(k): v for k, v in kwargs.items()},
@@ -199,6 +272,10 @@ class AIORedisBackend(RedisBackend):
         return result
 
     async def execute(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.execute
+        """
         if len(args) > 0:
             cmd = args[0]
             args_ex_cmd = args[1:]
@@ -222,6 +299,10 @@ class AIORedisBackend(RedisBackend):
         return result
 
     async def clear(self):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.clear
+        """
         async with self.get_async_context() as conn:
             keys = await conn.keys(self.make_key("*"))
             if len(keys) > 0:

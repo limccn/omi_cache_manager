@@ -1,5 +1,5 @@
 # MAKEFILE
-MODUEL_NAME:=omi_cache_manager
+MODULE_NAME:=omi_cache_manager
 TEST_CASE_DIR:=`pwd`/test
 
 install:
@@ -7,11 +7,11 @@ install:
 
 coverage:
 	cd ${TEST_CASE_DIR} && \
-    pytest --cov=${MODUEL_NAME} --cov-report=html ./test*
+    pytest --cov=${MODULE_NAME} --cov-report=html ./test*
     
 unittest:
 	cd ${TEST_CASE_DIR} && \
     pytest ./test*
 
 echo:
-	echo ${MODUEL_NAME}
+	echo ${MODULE_NAME}

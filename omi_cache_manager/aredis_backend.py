@@ -1,3 +1,20 @@
+"""
+Copyright 2020 limc.cn All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
 from typing import Type
 
 from aredis import StrictRedis, StrictRedisCluster
@@ -16,6 +33,16 @@ class ARedisContext(RedisContext):
                  encoding='utf-8',
                  decode_responses=False
                  ):
+        """
+        __init__构造函数，使用参数创建一个ARedisContextPool实例对象，并返回
+        :host - str default='localhost', Redis服务器地址
+        :port - int default=6379, Redis服务器端口
+        :db - int default=None, Redis服务器的DB编号，默认是None，使用0号数据库
+        :password - str default=None,Redis服务器的密码
+        :connect_timeout - int or str default=None,连接Redis服务器的超市时间
+        :encoding - str default=‘utf-8’, 连接Redis服务器使用的编码格式，默认使用utf-8
+        :decode_responses - bool default=False, 是否转编码redis的返回值，默认使用redis的编码
+        """
         super().__init__()
         self._redis_cls_type = cls_type
         self.host = host
@@ -36,6 +63,10 @@ class ARedisContext(RedisContext):
         pass
 
     def create(self):
+        """
+        Proxy function for internal cache object.
+        @See CacheContext.create
+        """
         self._conn_or_pool = self._redis_cls_type(
             host=self.host,
             port=self.port,
@@ -47,6 +78,10 @@ class ARedisContext(RedisContext):
         )
 
     def destroy(self):
+        """
+        Proxy function for internal cache object.
+        @See CacheContext.destroy
+        """
         pass
         # if not self._conn_or_pool:
         #     return
@@ -69,6 +104,20 @@ class ARedisContextPool(ARedisContext):
                  max_idle_time=0,
                  idle_check_interval=1
                  ):
+        """
+        __init__构造函数，使用参数创建一个ARedisContextPool实例对象，并返回
+        :host - str default='localhost', Redis服务器地址
+        :port - int default=6379, Redis服务器端口
+        :db - int default=None, Redis服务器的DB编号，默认是None，使用0号数据库
+        :password - str default=None,Redis服务器的密码
+        :connect_timeout - int or str default=None,连接Redis服务器的超市时间
+        :encoding - str default=‘utf-8’, 连接Redis服务器使用的编码格式，默认使用utf-8
+        :decode_responses - bool default=False, 是否转编码redis的返回值，默认使用redis的编码
+        :max_connections - int default=None, 连接池最大连接数
+        :retry_on_timeout - bool default=False,  超时后最大重试次数
+        :max_idle_time - int default=0,  连接的最大空闲时间
+        :idle_check_interval - int default=1, 检测连接的最大空闲的间隔
+        """
         super().__init__(
             cls_type=cls_type,
             host=host,
@@ -85,6 +134,10 @@ class ARedisContextPool(ARedisContext):
         self.idle_check_interval = idle_check_interval
 
     def create(self):
+        """
+        Proxy function for internal cache object.
+        @See CacheContext.create
+        """
         self._conn_or_pool = self._redis_cls_type(
             host=self.host,
             port=self.port,
@@ -102,6 +155,10 @@ class ARedisContextPool(ARedisContext):
 
 class ARedisBackend(RedisBackend):
     def __init__(self, config=None):
+        """
+        __init__构造函数，使用参数创建一个ARedisBackend实例对象，并返回
+            config - Backend配置相关的Dict，可以为None
+        """
         if not (config is None or isinstance(config, dict)):
             raise ValueError("`config` must be an instance of dict or None")
         # redis配置
@@ -122,6 +179,7 @@ class ARedisBackend(RedisBackend):
 
     def create_cache_context(self):
         """
+            Implement function from RedisBackend interface
             覆盖父类的create_cache_context
             @See RedisBackend.create_cache_context
         """
@@ -160,12 +218,23 @@ class ARedisBackend(RedisBackend):
             )
 
     def get_async_context(self):
+        """
+        Implement function from RedisBackend interface
+        @See RedisBackend.get_async_context
+        """
         return self.get_cache_context()
 
     def make_key(self, key):
+        """
+        生成key，使用f"{self.key_prefix}{key}"
+        """
         return f"{self.key_prefix}{key}"
 
     async def get(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.get
+        """
         if len(args) == 1 and len(kwargs) == 0:
             key = self.make_key(args[0])
         elif len(args) == 0 and len(kwargs) == 1:
@@ -176,7 +245,10 @@ class ARedisBackend(RedisBackend):
             return await conn.get(key)
 
     async def set(self, *args, **kwargs):
-
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.set
+        """
         expire = kwargs.get("expire", None)
         pexpire = kwargs.get("pexpire", None)
 
@@ -221,10 +293,18 @@ class ARedisBackend(RedisBackend):
         return result is True
 
     async def add(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.add
+        """
         kwargs["exist"] = "SET_IF_NOT_EXIST"
         return await self.set(*args, **kwargs)
 
     async def delete(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.delete
+        """
         if len(args) == 1 and len(kwargs) == 0:
             key = self.make_key(args[0])
         elif len(args) == 0 and len(kwargs) == 1:
@@ -236,6 +316,10 @@ class ARedisBackend(RedisBackend):
         return result > 0
 
     async def delete_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.delete_many
+        """
         keys = []
         for i in range(len(args)):
             key = self.make_key(args[i])
@@ -249,6 +333,10 @@ class ARedisBackend(RedisBackend):
         return result > 0
 
     async def get_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.get_many
+        """
         keys = []
         for i in range(len(args)):
             key = self.make_key(args[i])
@@ -261,6 +349,10 @@ class ARedisBackend(RedisBackend):
         return result
 
     async def set_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.set_many
+        """
         kv2update = {
             **{self.make_key(k): v for k, v in dict(args).items()},
             **{self.make_key(k): v for k, v in kwargs.items()},
@@ -273,6 +365,10 @@ class ARedisBackend(RedisBackend):
         return result
 
     async def execute(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.execute
+        """
         if len(args) > 0:
             cmd = args[0]
             args_ex_cmd = args[1:]
@@ -295,6 +391,10 @@ class ARedisBackend(RedisBackend):
         return result
 
     async def clear(self):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.clear
+        """
         with self.get_async_context() as conn:
             keys = await conn.keys(self.make_key("*"))
             if len(keys) > 0:

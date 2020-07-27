@@ -1,10 +1,27 @@
-import asyncio
+"""
+Copyright 2020 limc.cn All rights reserved.
 
-from pydantic import RedisDsn
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+"""
+
+import asyncio
 from abc import ABCMeta, abstractmethod
 
+from pydantic import RedisDsn
+
 from ._decorators import async_method_in_loop
-from .async_cache_manager import CacheBackend
+from .async_cache_manager import CacheBackend, CacheContext
 
 
 class NullCacheBackend(CacheBackend):
@@ -15,54 +32,102 @@ class NullCacheBackend(CacheBackend):
 
     @async_method_in_loop
     def get_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface, always return None.
+        @See CacheBackendContext.get_cache_context
+        """
         return None
 
     @async_method_in_loop
     def create_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface, always return None.
+        @See CacheBackendContext.create_cache_context
+        """
         return None
 
     @async_method_in_loop
     def destroy_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface, always return None.
+        @See CacheBackendContext.destroy_cache_context
+        """
         return None
 
     @async_method_in_loop
     def get(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface, always return None.
+        @See CacheBackend.get
+        """
         return None
 
     @async_method_in_loop
     def set(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface, always return True.
+        @See CacheBackend.set
+        """
         return True
 
     @async_method_in_loop
     def add(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface, always return True.
+        @See CacheBackend.add
+        """
         return True
 
     @async_method_in_loop
     def delete(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface, always return True.
+        @See CacheBackend.delete
+        """
         return True
 
     @async_method_in_loop
     def delete_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface, always return True.
+        @See CacheBackend.delete_many
+        """
         return True
 
     @async_method_in_loop
     def clear(self):
+        """
+        Implement function from CacheBackend interface, always return None.
+        @See CacheBackend.clear
+        """
         return None
 
     @async_method_in_loop
     def get_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface, always return None.
+        @See CacheBackend.get_many
+        """
         return None
 
     @async_method_in_loop
     def set_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface, always return True.
+        @See CacheBackend.set_many
+        """
         return True
 
     @async_method_in_loop
     def execute(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface, always return None.
+        @See CacheBackend.execute
+        """
         return None
 
 
-class SimpleCacheDictContext(object):
+class SimpleCacheDictContext(CacheContext):
     def __init__(self):
         self._cache_dict = dict({"": "", "*": ""})
 
@@ -88,6 +153,10 @@ class SimpleCacheDictContext(object):
 
     @async_method_in_loop
     def destroy(self):
+        """
+        Implement function from CacheContext interface
+        @See CacheContext.destroy
+        """
         if not self._cache_dict:
             return
         self._cache_dict.clear()
@@ -95,6 +164,10 @@ class SimpleCacheDictContext(object):
 
     @async_method_in_loop
     def create(self):
+        """
+        Implement function from CacheContext interface
+        @See CacheContext.create
+        """
         self._cache_dict = dict({"": "", "*": ""})
 
     @property
@@ -111,21 +184,39 @@ class SimpleCacheBackend(CacheBackend):
         self.setup_config(config)
 
     def make_key(self, key):
+        """
+        生成key，使用f"{self.key_prefix}{key}"
+        """
         return f"{self.key_prefix}{key}"
 
     def setup_config(self, config=None):
+        """
+        从config配置backend
+        """
         # do something to setup
         # create context
         if not self._cache_context:
             self.create_cache_context()
 
     def get_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface.
+        @See CacheBackendContext.get_cache_context
+        """
         return self._cache_context
 
     def create_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface.
+        @See CacheBackendContext.create_cache_context
+        """
         self._cache_context = SimpleCacheDictContext()
 
     def destroy_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface.
+        @See CacheBackendContext.destroy_cache_context
+        """
         if not self._cache_context:
             return
         self._cache_context.destory()
@@ -136,6 +227,10 @@ class SimpleCacheBackend(CacheBackend):
 
     @async_method_in_loop
     def get(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface.
+        @See CacheBackend.get
+        """
         if len(args) == 1 and len(kwargs) == 0:
             key = self.make_key(args[0])
         elif len(args) == 0 and len(kwargs) == 1:
@@ -149,6 +244,10 @@ class SimpleCacheBackend(CacheBackend):
 
     @async_method_in_loop
     def set(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface.
+        @See CacheBackend.set
+        """
         # 筛选除["expire","pexpire","exist"]以外的key-val
         filter_kv = {k: v for k, v in kwargs.items() if k not in ["expire", "pexpire", "exist"]}
         cache = self.get_cache()
@@ -188,6 +287,10 @@ class SimpleCacheBackend(CacheBackend):
 
     @async_method_in_loop
     def delete(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface.
+        @See CacheBackend.delete
+        """
         cache = self.get_cache()
         if len(args) == 1 and len(kwargs) == 0:
             key = self.make_key(args[0])
@@ -205,6 +308,10 @@ class SimpleCacheBackend(CacheBackend):
 
     @async_method_in_loop
     def get_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface.
+        @See CacheBackend.get_many
+        """
         results = []
         cache = self.get_cache()
         if len(args) == 0:
@@ -220,6 +327,10 @@ class SimpleCacheBackend(CacheBackend):
 
     @async_method_in_loop
     def delete_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface.
+        @See CacheBackend.delete_many
+        """
         cache = self.get_cache()
         if len(args) == 0:
             raise TypeError("No keys for delete_many, keys=%s" % str(args))
@@ -235,6 +346,10 @@ class SimpleCacheBackend(CacheBackend):
 
     @async_method_in_loop
     def set_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface.
+        @See CacheBackend.set_many
+        """
         kv2update = {
             **{self.make_key(k): v for k, v in dict(args).items()},
             **{self.make_key(k): v for k, v in kwargs.items()},
@@ -253,10 +368,18 @@ class SimpleCacheBackend(CacheBackend):
         return True
 
     async def add(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.add
+        """
         # TODO add should return false when key is exist
         return await self.set(*args, **kwargs)
 
     async def execute(self, *args, **kwargs):
+        """
+        Implement function from CacheBackend interface
+        @See CacheBackend.execute
+        """
         if len(args) > 0:
             cmd = args[0]
             args_ex_cmd = args[1:]
@@ -284,7 +407,7 @@ class SimpleCacheBackend(CacheBackend):
         return True
 
 
-class RedisContext(object):
+class RedisContext(CacheContext):
     __metaclass__ = ABCMeta
 
     def __init__(self):
@@ -309,14 +432,16 @@ class RedisContext(object):
     @abstractmethod
     async def create(self):
         """
-         "Proxy function for internal cache object."
+        Proxy function for internal cache object.
+        @See CacheContext.create
         """
         raise NotImplementedError
 
     @abstractmethod
     async def destroy(self):
         """
-         "Proxy function for internal cache object."
+        Proxy function for internal cache object.
+        @See CacheContext.destroy
         """
         raise NotImplementedError
 
@@ -359,12 +484,24 @@ class RedisBackend(CacheBackend):
             self.create_cache_context()
 
     def get_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackendContext.get_cache_context
+        """
         return self._redis_cache_context
 
     def create_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackendContext.create_cache_context
+        """
         self._redis_cache_context = RedisContext()
 
     async def destroy_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackendContext.destroy_cache_context
+        """
         if not self._redis_cache_context:
             return
         return await self._redis_cache_context.destory()
