@@ -15,7 +15,7 @@ limitations under the License.
 
 """
 
-
+import os
 import sys
 
 import pytest
@@ -359,6 +359,71 @@ async def test_backend_delete_manay_error(event_loop):
 
 
 @pytest.mark.asyncio
+async def test_backend_exec(event_loop):
+    val = await get_cache().execute("SET", "alpha", "Alpha")
+    assert val is True
+    val = await get_cache().execute("GET", "alpha")
+    assert val == "Alpha"
+    val = await get_cache().execute("MSET", bravo="Bravo", charlie="Charlie")
+    assert val is True
+    val = await get_cache().execute("MGET", "alpha", "bravo", "charlie")
+    assert val == ["Alpha", "Bravo", "Charlie"]
+    val = await get_cache().execute("MSET", ("delta", "Delta"), ("echo", "Echo"))
+    assert val is True
+    val = await get_cache().execute("MGET", "alpha", "bravo", "charlie", "delta")
+    assert val == ["Alpha", "Bravo", "Charlie", "Delta"]
+    val = await get_cache().execute("DEL", "alpha")
+    assert val is True
+
+
+@pytest.mark.asyncio
+async def test_backend_exec_single(event_loop):
+    val = await get_cache().execute("PING")
+    assert val is not None
+    val = await get_cache().execute("DBSIZE")
+    assert val is not None
+    val = await get_cache().execute("TIME")
+    assert val is not None
+
+
+@pytest.mark.asyncio
+async def test_backend_exec_incr(event_loop):
+    val = await get_cache().execute("DEL", "foobar")
+    val = await get_cache().execute("SET", "foobar", 1)
+    assert val is True
+    val = await get_cache().execute("GET", "foobar")
+    assert val is "1"
+    val = await get_cache().execute("INCR", "foobar")
+    assert val is 2
+    val = await get_cache().execute("GET", "foobar")
+    assert val is "2"
+    val = await get_cache().execute("INCRBY", "foobar", "2")
+    assert val is 4
+    val = await get_cache().execute("GET", "foobar")
+    assert val is "4"
+    val = await get_cache().execute("DECR", "foobar")
+    assert val is 3
+    val = await get_cache().execute("GET", "foobar")
+    assert val is "3"
+    val = await get_cache().execute("DECRBY", "foobar", "2")
+    assert val is 1
+    val = await get_cache().execute("GET", "foobar")
+    assert val is "1"
+
+
+@pytest.mark.asyncio
+async def test_backend_exec_error(event_loop):
+    try:
+        await get_cache().execute("UNKNOW", "alpha", "Alpha")
+    except Exception as ex:
+        assert isinstance(ex, TypeError)
+    try:
+        await get_cache().execute("INCRBY", "foobar", "2", "abc")
+    except Exception as ex:
+        assert isinstance(ex, TypeError)
+
+
+@pytest.mark.asyncio
 async def test_backend_clear(event_loop):
     val = await get_cache().set_many(alpha="Alpha", bravo="Bravo", charlie="Charlie")
     assert val is True
@@ -376,29 +441,5 @@ async def test_backend_clear(event_loop):
     assert val == [None]
 
 
-@pytest.mark.asyncio
-async def test_backend_exec(event_loop):
-    val = await get_cache().execute("SET", "alpha", "Alpha")
-    assert val is True
-    val = await get_cache().execute("GET", "alpha")
-    assert val == "Alpha"
-    val = await get_cache().execute("MSET", bravo="Bravo", charlie="Charlie")
-    assert val is True
-    val = await get_cache().execute("MGET", "alpha", "bravo", "charlie")
-    assert val == ["Alpha", "Bravo", "Charlie"]
-    val = await get_cache().execute("MSET", ("delta", "Delta"), ("echo", "Echo"))
-    assert val is True
-    val = await get_cache().execute("MGET", "alpha", "bravo", "charlie", "delta")
-    assert val == ["Alpha", "Bravo", "Charlie", "Delta"]
-
-
-@pytest.mark.asyncio
-async def test_backend_exec_error(event_loop):
-    try:
-        await get_cache().execute("UNKNOW", "alpha", "Alpha")
-    except Exception as ex:
-        assert isinstance(ex, TypeError)
-
-
 if __name__ == '__main__':
-    pytest.main(['test_unit_omi_cache_aio_redis_backend.py'])
+    pytest.main([os.path.basename(__file__)])

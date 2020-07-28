@@ -192,13 +192,13 @@ class CacheBackend(CacheBackendContext):
         :key - str or any repr, 需要删除value的key值，有且只能使用一个
         使用demo举例
         ```
-        cache.delete("somekey")
-        cache.delete(key="somekey")
+        cache.delete("foo")
+        cache.delete(key="foo")
         ```
         以下操作将抛出异常
         ```
-        cache.delete("somekey","somekey1","somekey2") 
-        cache.delete(key="somekey","somekey")
+        cache.delete("foo","foo1","foo2")
+        cache.delete(key="foo","foo")
         ```
         以下在不同的Backend下可能会抛出异常
         ```
@@ -240,12 +240,12 @@ class CacheBackend(CacheBackendContext):
         :* - any, 使用key传入参数，只支持使用参数列表("key1","key2","key3")，需要获取的key值,可用使用多个.
         使用demo举例
         ```
-        cache.get_many("somekey")
-        cache.get_many("somekey","somekey1","somekey2") 
+        cache.get_many("foo")
+        cache.get_many("foo","foo1","foo2")
         ```
         以下操作将抛出异常
         ```
-        cache.get_many(key="somekey","somekey")
+        cache.get_many(key="foo","foo")
         ```
         以下在不同的Backend下可能会抛出异常
         ```

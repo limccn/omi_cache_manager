@@ -82,10 +82,10 @@ class ARedisContext(RedisContext):
         Proxy function for internal cache object.
         @See CacheContext.destroy
         """
-        pass
-        # if not self._conn_or_pool:
-        #     return
-        # #await self._conn_or_pool.disconnect_on_idle_time_exceeded()
+        if not self._conn_or_pool:
+            return
+        # NoOp just wait
+        # await self._conn_or_pool.disconnect_on_idle_time_exceeded()
         # self._conn_or_pool.connection_pool.disconnect()
 
 
@@ -375,20 +375,52 @@ class ARedisBackend(RedisBackend):
         else:
             raise TypeError("Execute command can not empty")
         try:
-            with self.get_async_context() as conn:
-                if str.lower(cmd) == "get":
-                    result = await self.get(*args_ex_cmd, **kwargs)
-                elif str.lower(cmd) == "mget":
-                    result = await self.get_many(*args_ex_cmd, **kwargs)
-                elif str.lower(cmd) == "set":
-                    result = await self.set(*args_ex_cmd, **kwargs)
-                elif str.lower(cmd) == "mset":
-                    result = await self.set_many(*args_ex_cmd, **kwargs)
-                else:
-                    result = await conn.execute(*args, **kwargs)
+            cmd = str.lower(cmd)
+            if cmd == "get":
+                result = await self.get(*args_ex_cmd, **kwargs)
+            elif cmd == "mget":
+                result = await self.get_many(*args_ex_cmd, **kwargs)
+            elif cmd == "set":
+                result = await self.set(*args_ex_cmd, **kwargs)
+            elif cmd == "mset":
+                result = await self.set_many(*args_ex_cmd, **kwargs)
+            elif cmd == "del":
+                result = await self.delete(*args_ex_cmd, **kwargs)
+            elif cmd in ["ping", "quit", "bgsave", "dbsize", "time",
+                         "info", "lastsave", "flushdb", "sync", "bgrewriteaof"]:
+                # simple commands
+                with self.get_async_context() as conn:
+                    result = await conn.execute_command(*args, **kwargs)
+            else:
+                result = await self.execute_key(*args, **kwargs)
+            return result
         except Exception as ex:
             raise TypeError("Execute command type error,detail=%s" % str(ex))
-        return result
+
+    async def execute_key(self, *args, **kwargs):
+        cmd = args[0]
+        args_except_cmd = args[1:]
+        args_to_execute = [cmd]
+        if len(args_except_cmd) > 0:
+            # 默认第一个参数为key
+            key = self.make_key(args_except_cmd[0])
+            args_to_execute.append(key)
+            args_to_execute.extend(args_except_cmd[1:])
+        else:
+            raise TypeError("Too many or no key to execute, command = %s param =%s kwargs= %s"
+                            % (str(cmd), str(*args_except_cmd), str({**kwargs})))
+
+        with self.get_async_context() as conn:
+            cmd = str.lower(cmd)
+            if cmd == "dump":
+                result = await conn.dump(key)
+            elif cmd == "incr":
+                result = await conn.incr(key)
+            elif cmd == "decr":
+                result = await conn.decr(key)
+            else:
+                result = await conn.execute_command(*tuple(args_to_execute), **kwargs)
+            return result
 
     async def clear(self):
         """

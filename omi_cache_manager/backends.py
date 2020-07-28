@@ -386,14 +386,17 @@ class SimpleCacheBackend(CacheBackend):
         else:
             raise TypeError("Execute command can not empty")
 
-        if str.lower(cmd) == "get":
+        cmd = str.lower(cmd)
+        if cmd == "get":
             return await self.get(*args_ex_cmd, **kwargs)
-        elif str.lower(cmd) == "mget":
+        elif cmd == "mget":
             return await self.get_many(*args_ex_cmd, **kwargs)
-        elif str.lower(cmd) == "set":
+        elif cmd == "set":
             return await self.set(*args_ex_cmd, **kwargs)
-        elif str.lower(cmd) == "mset":
+        elif cmd == "mset":
             return await self.set_many(*args_ex_cmd, **kwargs)
+        elif cmd == "del":
+            return await self.delete(*args_ex_cmd, **kwargs)
         else:
             raise TypeError("Unimplemented command %s", cmd)
 
