@@ -294,7 +294,7 @@ class AIORedisBackend(RedisBackend):
             elif cmd == "del":
                 result = await self.delete(*args_ex_cmd, **kwargs)
             elif cmd in ["ping", "quit", "bgsave", "dbsize", "time",
-                         "info", "lastsave", "flushdb", "sync", "bgrewiteaof"]:
+                         "info", "lastsave", "flushdb", "sync", "bgrewriteaof"]:
                 # simple commands
                 async with self.get_async_context() as conn:
                     result = await conn.execute(*args, **kwargs)

@@ -432,6 +432,8 @@ async def test_backend_exec_incr(event_loop):
     assert val is 1
     val = await get_cache().execute("GET", "foobar")
     assert val is "1"
+    val = await get_cache().execute("DUMP", "dump_no_exist_key")
+    assert val is None
 
 
 @pytest.mark.asyncio
@@ -445,6 +447,23 @@ async def test_backend_exec_error(event_loop):
         await get_cache().execute("INCRBY", "foobar", "2", "abc")
     except Exception as ex:
         assert isinstance(ex, TypeError)
+    try:
+        await get_cache().execute()
+    except Exception as ex:
+        assert isinstance(ex, TypeError)
+    try:
+        await get_cache().execute(foo="bar")
+    except Exception as ex:
+        assert isinstance(ex, TypeError)
+    try:
+        await get_cache().execute("INCRBY")
+    except Exception as ex:
+        assert isinstance(ex, TypeError)
+    try:
+        await get_cache().execute("INCRBY",foo="bar")
+    except Exception as ex:
+        assert isinstance(ex, TypeError)
+
 
 
 @pytest.mark.asyncio

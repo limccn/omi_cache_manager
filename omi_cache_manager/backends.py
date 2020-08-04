@@ -26,6 +26,12 @@ from .async_cache_manager import CacheBackend, CacheContext
 
 class NullCacheBackend(CacheBackend):
     def __init__(self, config=None):
+        """
+        __init__构造函数，使用参数创建一个SimpleCacheBackend实例对象，并返回
+            config - Backend配置相关的Dict，可以为None
+        """
+        if not (config is None or isinstance(config, dict)):
+            raise ValueError("`config` must be an instance of dict or None")
         self.config = config
         self.key_prefix = config.get('CACHE_KEY_PREFIX', '')
         pass
@@ -177,6 +183,12 @@ class SimpleCacheDictContext(CacheContext):
 
 class SimpleCacheBackend(CacheBackend):
     def __init__(self, config=None):
+        """
+        __init__构造函数，使用参数创建一个SimpleCacheBackend实例对象，并返回
+            config - Backend配置相关的Dict，可以为None
+        """
+        if not (config is None or isinstance(config, dict)):
+            raise ValueError("`config` must be an instance of dict or None")
         self.config = config
         self._cache_context = None
         self.key_prefix = config.get('CACHE_KEY_PREFIX', '')

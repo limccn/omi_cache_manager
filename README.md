@@ -14,14 +14,14 @@ or install from source code
 $python setup.py install
 ```
  
-2.Install backend for omi_cache_manager, [aioredis](https://github.com/aio-libs/aioredis/) or [aredis](https://github.com/NoneGG/aredis)
+2.Install redis backend for omi_cache_manager, [aioredis](https://github.com/aio-libs/aioredis/) or [aredis](https://github.com/NoneGG/aredis)
 
-```python
+```shell script
  # use aioredis as backend
  $pip install aioredis
 ```
 
-```python
+```shell script
  # use aredis as backend
  $pip install aredis
 ```  
@@ -31,7 +31,8 @@ $python setup.py install
 # use redis server as cache context manager
 cache = AsyncCacheManager(
     app, # None if no app context to set
-    cache_backend="omi_cache_manager.aredis_backend.ARedisBackend",
+    # use backend alias ARedisBackend, or aredis 
+    cache_backend="ARedisBackend", # will convert to omi_cache_manager.aredis_backend.ARedisBackend
     config={
         "CACHE_REDIS_SCHEME": "redis",
         "CACHE_REDIS_HOST": "localhost",
@@ -45,7 +46,8 @@ cache = AsyncCacheManager(
 # use simple dictionary as cache context manager
 cache = AsyncCacheManager(
     app, # None if no app context to set
-    cache_backend="omi_cache_manager.backends.SimpleCacheBackend",
+    # use backend alias SimpleCacheBackend, or simple_cache
+    cache_backend="SimpleCacheBackend", # will convert to omi_cache_manager.backends.SimpleCacheBackend
     config={
         "CACHE_KEY_PREFIX": "MOCK_SIMPLE_INTEGRATION_TEST:"
     }
@@ -56,13 +58,30 @@ cache = AsyncCacheManager(
 ```python
 # GET
 value = await cache.get("key")
+# GET MANY
+value = await cache.get_many("key1", "key2", "key3")
 # SET
 value = await cache.set("key", "val")
+value = await cache.set(key="key", value="val")
+# SET MANY, tuple, mapping is supported
+value = await cache.set_many(key1="val1", key2="val2")
+value = await cache.set_many(("key1", "val1"), ("key2", "val2"))
 # ADD
 value = await cache.add("key", "val")
+value = await cache.add(key="key", value="val")
 # DELETE
 value = await cache.delete("key")
+# DELETE MANY
+value = await cache.delete_many("key1","key2","key3")
 
+```
+
+5.Close cache connection or destroy cache stored in memory
+```python
+# async model
+await cache.destroy_backend_cache_context()
+# sync model
+cache.destroy_backend_cache_context()
 ```
 
 5.We implemented a demo api provider use [FastAPI](https://github.com/tiangolo/fastapi) to show How to use this library. and testing is included.

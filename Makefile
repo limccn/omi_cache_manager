@@ -2,6 +2,9 @@
 MODULE_NAME:=omi_cache_manager
 TEST_CASE_DIR:=`pwd`/test
 
+run:
+	python mock_fastapi.py
+
 install:
 	python setup.py install
 

@@ -345,6 +345,12 @@ class AsyncCacheManager:
             app - None or Any,可以为None，如果设置了app context上下文,当前对象的引用将被设置到`app.state.OMI_CACHE_MANAGER`
             cache_backend - Union[str, CacheBackend]，Backend的实现类，需要继承CacheBackend接口
                 可以使用str方式传入class名称，构造函数会根据str查找并自动解析响应的CacheBackend
+                同时，也可以使用的backend别名方式完成backend的设置,不区分大小写
+                传入"null_cache" 或者 "NullCacheBackend" 会使用 "omi_cache_manager.backends.NullCacheBackend"
+                传入"simple_cache" 或者 "SimpleCacheBackend" 会使用"omi_cache_manager.backends.SimpleCacheBackend"
+                传入"aioredis" 或者 "AIORedisBackend" 会使用"omi_cache_manager.aio_redis_backend.AIORedisBackend"
+                传入"aredis"或者 "ARedisBackend" 会使用"omi_cache_manager.aredis_backend.ARedisBackend"
+
         """
         if not (config is None or isinstance(config, dict)):
             raise ValueError("`config` must be an instance of dict or None")
@@ -378,6 +384,18 @@ class AsyncCacheManager:
         """
         # 如果http_backend是str, 那么反射创建一个CacheBackend的instance
         if isinstance(cache_backend, str):
+            cache_backend_lower = cache_backend.lower()
+            # alias
+            if cache_backend_lower in ["null_cache", "nullcachebackend"]:
+                cache_backend = "omi_cache_manager.backends.NullCacheBackend"
+            elif cache_backend_lower in ["simple_cache", "simplecachebackend"]:
+                cache_backend = "omi_cache_manager.backends.SimpleCacheBackend"
+            elif cache_backend_lower in ["aioredis", "aioredisbackend"]:
+                cache_backend = "omi_cache_manager.aio_redis_backend.AIORedisBackend"
+            elif cache_backend_lower in ["aredis", "aredisbackend"]:
+                cache_backend = "omi_cache_manager.aredis_backend.ARedisBackend"
+            else:
+                pass
             name = cache_backend.split('.')
             used = name.pop(0)
             try:
