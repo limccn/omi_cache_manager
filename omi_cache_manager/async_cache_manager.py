@@ -26,17 +26,17 @@ logger = logging.getLogger(__name__)
 class CacheContext(object):
     __metaclass__ = ABCMeta
 
+    @abstractmethod
     def create(self):
         """
         创建缓存的Context上下文中的缓存对象
         """
-        raise NotImplementedError
 
+    @abstractmethod
     def destroy(self):
         """
         销毁缓存的Context上下文中的缓存对象
         """
-        raise NotImplementedError
 
 
 class CacheBackendContext(object):
@@ -48,7 +48,6 @@ class CacheBackendContext(object):
         Proxy function for internal cache context object.
         获取当前缓存的Context上下文对象，对于已创建完成的Context，返回相应Context对象引用
         """
-        raise NotImplementedError
 
     @abstractmethod
     def create_cache_context(self):
@@ -56,7 +55,6 @@ class CacheBackendContext(object):
         Proxy function for internal cache context object.
         创建缓存的Context上下文对象，对于异步Async的backend实现，支持使用同步Sync和异步Async方式完成调用，习惯上由Backend自行创建。
         """
-        raise NotImplementedError
 
     @abstractmethod
     def destroy_cache_context(self):
@@ -64,10 +62,9 @@ class CacheBackendContext(object):
         Proxy function for internal cache context object.
         销毁缓存的Context上下文对象，对于异步Async的backend实现，应该使用异步方式完成调用，否则会出现缓存无法被销毁的情况.
         ```
-        await cache.destroy_backend_cache_context()
+        await cache.destroy_cache_context()
         ```
         """
-        raise NotImplementedError
 
 
 class CacheBackend(CacheBackendContext):
@@ -85,7 +82,6 @@ class CacheBackend(CacheBackendContext):
         ```
         
         """
-        raise NotImplementedError
 
     @abstractmethod
     def get(self, *args, **kwargs):
@@ -110,7 +106,6 @@ class CacheBackend(CacheBackendContext):
         cache.get(None) # Nothing，字典缓存无效，redis等有效
         ```
         """
-        raise NotImplementedError
 
     @abstractmethod
     def set(self, *args, **kwargs):
@@ -142,7 +137,6 @@ class CacheBackend(CacheBackendContext):
         cache.set("","foobar") # empty string，字典缓存有效，redis等无效
         cache.set(None,"foobar") # Nothing，字典缓存无效，redis等无效
         """
-        raise NotImplementedError
 
     @abstractmethod
     def add(self, *args, **kwargs):
@@ -182,7 +176,6 @@ class CacheBackend(CacheBackendContext):
         @See CacheBackend.set
 
         """
-        raise NotImplementedError
 
     @abstractmethod
     def delete(self, *args, **kwargs):
@@ -207,7 +200,6 @@ class CacheBackend(CacheBackendContext):
         cache.delete(None) # Nothing，字典缓存无效，redis等有效
         ```
         """
-        raise NotImplementedError
 
     @abstractmethod
     def delete_many(self, *args, **kwargs):
@@ -230,7 +222,6 @@ class CacheBackend(CacheBackendContext):
         cache.delete_many(None) # Nothing，字典缓存无效，redis等有效
         ```
         """
-        raise NotImplementedError
 
     @abstractmethod
     def get_many(self, *args, **kwargs):
@@ -254,7 +245,6 @@ class CacheBackend(CacheBackendContext):
         cache.get_many(None) # Nothing，字典缓存无效，redis等有效
         ```
         """
-        raise NotImplementedError
 
     @abstractmethod
     def set_many(self, *args, **kwargs):
@@ -281,7 +271,6 @@ class CacheBackend(CacheBackendContext):
         cache.set_many("","foobar") # empty string，字典缓存有效，redis等无效
         cache.set_many(None,"foobar") # Nothing，字典缓存无效，redis等无效
         """
-        raise NotImplementedError
 
     @abstractmethod
     def execute(self, *args, **kwargs):
@@ -299,7 +288,6 @@ class CacheBackend(CacheBackendContext):
         cache.execute("MSET",("key1","foo"),("key2","bar"),("key3","foobar")) #tuple
 
         """
-        raise NotImplementedError
 
 
 class SerializableCacheBackend(CacheBackend):
@@ -319,7 +307,6 @@ class SerializableCacheBackend(CacheBackend):
         cache.load(source=‘/tmp/path’,type='json')    
         ```
         """
-        raise NotImplementedError
 
     @abstractmethod
     def dump(self, *args, **kwargs):
@@ -334,7 +321,6 @@ class SerializableCacheBackend(CacheBackend):
         cache.dump(target=‘/tmp/path’,type='json') 
         ```
         """
-        raise NotImplementedError
 
 
 class AsyncCacheManager:
@@ -364,6 +350,10 @@ class AsyncCacheManager:
         self.cache_backend_name = cache_backend_instance.__class__.__name__
         self.cache = cache_backend_instance
 
+    @property
+    def app_ref(self):
+        return self._app_ref
+
     def setup_app(self, app):
         """
         关联manager与app context上下文,当前manager对象的引用将被设置到`app.state.OMI_CACHE_MANAGER`
@@ -371,12 +361,15 @@ class AsyncCacheManager:
         # 为app增加cache_manager属性
         if isinstance(app, object) and hasattr(app, "state"):
             state = getattr(app, "state")
-            if hasattr(state, "OMI_CACHE_MANAGER"):
-                raise ValueError(
-                    'Your context has bind to other Cache Manager, \
-                    Can not set OMI_CACHE_MANAGER to an exist attr [app.state.OMI_CACHE_MANAGER]')
+            if state is not None and isinstance(state, object):
+                if hasattr(state, "OMI_CACHE_MANAGER"):
+                    raise ValueError(
+                        'Your context has bind to other Cache Manager, \
+                        Can not set OMI_CACHE_MANAGER to an exist attr [app.state.OMI_CACHE_MANAGER]')
+                else:
+                    app.state.OMI_CACHE_MANAGER = self
             else:
-                setattr(state, "OMI_CACHE_MANAGER", self)
+                pass
 
     def parse_backend_from_config(self, cache_backend, config):
         """
@@ -432,14 +425,12 @@ class AsyncCacheManager:
         """
         return self.cache.get_cache_context()
 
-    async def create_backend_cache_context(self):
+    def create_backend_cache_context(self):
         """
         Proxy function for internal cache context object.
         代理cache context的create_cache_context，使用异步方式调用
         """
-        return await self.async_method_call(
-            self.cache.create_cache_context
-        )
+        return self.cache.create_cache_context()
 
     async def destroy_backend_cache_context(self):
         """
@@ -447,7 +438,7 @@ class AsyncCacheManager:
         代理cache context的destroy_cache_context，使用异步方式调用
         """
         return await self.async_method_call(
-            self.cache.destory_cache_context
+            self.cache.destroy_cache_context
         )
 
     @classmethod

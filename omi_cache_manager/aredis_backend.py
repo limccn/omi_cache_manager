@@ -15,6 +15,7 @@ limitations under the License.
 
 """
 
+import asyncio
 from typing import Type
 
 from aredis import StrictRedis, StrictRedisCluster
@@ -85,6 +86,7 @@ class ARedisContext(RedisContext):
         if not self._conn_or_pool:
             return
         # NoOp just wait
+        # await asyncio.sleep(0.01)
         # await self._conn_or_pool.disconnect_on_idle_time_exceeded()
         # self._conn_or_pool.connection_pool.disconnect()
 
@@ -161,21 +163,33 @@ class ARedisBackend(RedisBackend):
         """
         if not (config is None or isinstance(config, dict)):
             raise ValueError("`config` must be an instance of dict or None")
-        # redis配置
-        self.connection_timeout = config.get('CACHE_REDIS_CONNECTION_TIMEOUT', None)
-        self.decode_responses = config.get('CACHE_REDIS_DECODE_RESPONSES', True)
-        # 连接池
-        self.use_pool = config.get('CACHE_REDIS_USE_POOL', True)
-        self.use_cluster = config.get('CACHE_REDIS_USE_CLUSTER', False)
-        # self.pool_minsize = config.get('CACHE_REDIS_POOL_MINSIZE',1)
-        self.pool_maxsize = config.get('CACHE_REDIS_POOL_MAXSIZE', None)
-        self.max_idle_time = config.get('CACHE_REDIS_MAX_IDLE_TIME', 0)
-        self.retry_on_timeout = config.get('CACHE_REDIS_RETRY_ON_TIMEOUT', False)
-        self.idle_check_interval = config.get('CACHE_REDIS_IDLE_CHECK_INTERVAL', 1)
-        # encoding
-        self.encoding = config.get('CACHE_REDIS_ENCODING', 'utf-8')
 
-        super().__init__(config)
+        if config is not None:
+            # redis配置
+            self.connection_timeout = config.get('CACHE_REDIS_CONNECTION_TIMEOUT', None)
+            self.decode_responses = config.get('CACHE_REDIS_DECODE_RESPONSES', True)
+            # 连接池
+            self.use_pool = config.get('CACHE_REDIS_USE_POOL', True)
+            self.use_cluster = config.get('CACHE_REDIS_USE_CLUSTER', False)
+            # self.pool_minsize = config.get('CACHE_REDIS_POOL_MINSIZE',1)
+            self.pool_maxsize = config.get('CACHE_REDIS_POOL_MAXSIZE', None)
+            self.max_idle_time = config.get('CACHE_REDIS_MAX_IDLE_TIME', 0)
+            self.retry_on_timeout = config.get('CACHE_REDIS_RETRY_ON_TIMEOUT', False)
+            self.idle_check_interval = config.get('CACHE_REDIS_IDLE_CHECK_INTERVAL', 1)
+            # encoding
+            self.encoding = config.get('CACHE_REDIS_ENCODING', 'utf-8')
+        else:
+            self.connection_timeout = None
+            self.decode_responses = True
+            self.use_pool = True
+            self.use_cluster = False
+            self.pool_maxsize = None
+            self.max_idle_time = 0
+            self.retry_on_timeout = False
+            self.idle_check_interval = 1
+            self.encoding = 'utf-8'
+
+        super().__init__(config=config)
 
     def create_cache_context(self):
         """
@@ -216,6 +230,25 @@ class ARedisBackend(RedisBackend):
                 encoding=self.encoding,
                 decode_responses=self.decode_responses,
             )
+
+    def get_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackendContext.get_cache_context
+        """
+        return self._redis_cache_context
+
+    async def destroy_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackendContext.destroy_cache_context
+        """
+        if not self._redis_cache_context:
+            return
+        self._redis_cache_context.destroy()
+        self._redis_cache_context = None
+        # just wait
+        return await asyncio.sleep(0.01)
 
     def get_async_context(self):
         """

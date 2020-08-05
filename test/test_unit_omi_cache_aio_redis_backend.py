@@ -436,7 +436,7 @@ async def test_backend_exec_error(event_loop):
     except Exception as ex:
         assert isinstance(ex, TypeError)
     try:
-        await get_cache().execute("INCRBY",foo="bar")
+        await get_cache().execute("INCRBY", foo="bar")
     except Exception as ex:
         assert isinstance(ex, TypeError)
 

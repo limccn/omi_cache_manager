@@ -15,6 +15,8 @@ limitations under the License.
 
 """
 
+import asyncio
+
 import aioredis
 from aioredis import ReplyError
 
@@ -103,16 +105,24 @@ class AIORedisBackend(RedisBackend):
     def __init__(self, config=None):
         if not (config is None or isinstance(config, dict)):
             raise ValueError("`config` must be an instance of dict or None")
-        # redis配置
-        self.connection_timeout = config.get('CACHE_REDIS_CONNECTION_TIMEOUT', 3)
-        # 连接池
-        self.use_pool = config.get('CACHE_REDIS_USE_POOL', True)
-        self.pool_minsize = config.get('CACHE_REDIS_POOL_MINSIZE', 1)
-        self.pool_maxsize = config.get('CACHE_REDIS_POOL_MAXSIZE', 50)
-        # encoding
-        self.encoding = config.get('CACHE_REDIS_ENCODING', 'utf-8')
 
-        super().__init__(config)
+        if config is not None:
+            # redis配置
+            self.connection_timeout = config.get('CACHE_REDIS_CONNECTION_TIMEOUT', 3)
+            # 连接池
+            self.use_pool = config.get('CACHE_REDIS_USE_POOL', True)
+            self.pool_minsize = config.get('CACHE_REDIS_POOL_MINSIZE', 3)
+            self.pool_maxsize = config.get('CACHE_REDIS_POOL_MAXSIZE', 10)
+            # encoding
+            self.encoding = config.get('CACHE_REDIS_ENCODING', 'utf-8')
+        else:
+            self.connection_timeout = 3
+            self.use_pool = True
+            self.pool_minsize = 3
+            self.pool_maxsize = 10
+            self.encoding = 'utf-8'
+
+        super().__init__(config=config)
 
     def create_cache_context(self):
         """
@@ -133,6 +143,25 @@ class AIORedisBackend(RedisBackend):
                 timeout=self.connection_timeout,
                 encoding=self.encoding,
             )
+
+    def get_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackendContext.get_cache_context
+        """
+        return self._redis_cache_context
+
+    async def destroy_cache_context(self):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackendContext.destroy_cache_context
+        """
+        if not self._redis_cache_context:
+            return
+        await self._redis_cache_context.destroy()
+        self._redis_cache_context = None
+        # just wait
+        return await asyncio.sleep(0.01)
 
     def get_async_context(self):
         """

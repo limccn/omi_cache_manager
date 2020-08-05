@@ -1,6 +1,5 @@
 from ._decorators import async_method_in_loop
 # for cached
-from ._decorators import cached as omi_cached
 from .aio_redis_backend import AIORedisBackend, AIORedisContext, AIORedisContextPool
 # for those use python < 3.4.4
 from .aio_redis_backend_py34 import AIORedisContext as AIORedisContextPy34, \

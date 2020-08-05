@@ -27,16 +27,23 @@ from .async_cache_manager import CacheBackend, CacheContext
 class NullCacheBackend(CacheBackend):
     def __init__(self, config=None):
         """
-        __init__构造函数，使用参数创建一个SimpleCacheBackend实例对象，并返回
+        __init__构造函数，使用参数创建一个SimpleCacheBackend实例对象，，抽象类不能被实例化
             config - Backend配置相关的Dict，可以为None
         """
+        super().__init__()
+
         if not (config is None or isinstance(config, dict)):
             raise ValueError("`config` must be an instance of dict or None")
         self.config = config
-        self.key_prefix = config.get('CACHE_KEY_PREFIX', '')
+
+        if config is not None:
+            self.key_prefix = config.get('CACHE_KEY_PREFIX', str(self.__class__.__name__).upper())
+        else:
+            # 使用self.__class__.__name__做为prefix
+            self.key_prefix = str(self.__class__.__name__).upper()
+
         pass
 
-    @async_method_in_loop
     def get_cache_context(self):
         """
         Implement function from CacheBackendContext interface, always return None.
@@ -44,7 +51,6 @@ class NullCacheBackend(CacheBackend):
         """
         return None
 
-    @async_method_in_loop
     def create_cache_context(self):
         """
         Implement function from CacheBackendContext interface, always return None.
@@ -52,13 +58,13 @@ class NullCacheBackend(CacheBackend):
         """
         return None
 
-    @async_method_in_loop
-    def destroy_cache_context(self):
+    async def destroy_cache_context(self):
         """
         Implement function from CacheBackendContext interface, always return None.
         @See CacheBackendContext.destroy_cache_context
         """
-        return None
+        # noop just wait
+        return await asyncio.sleep(0.01)
 
     @async_method_in_loop
     def get(self, *args, **kwargs):
@@ -157,7 +163,6 @@ class SimpleCacheDictContext(CacheContext):
         await asyncio.sleep(0.1)
         pass
 
-    @async_method_in_loop
     def destroy(self):
         """
         Implement function from CacheContext interface
@@ -168,7 +173,6 @@ class SimpleCacheDictContext(CacheContext):
         self._cache_dict.clear()
         self._cache_dict = None
 
-    @async_method_in_loop
     def create(self):
         """
         Implement function from CacheContext interface
@@ -187,11 +191,17 @@ class SimpleCacheBackend(CacheBackend):
         __init__构造函数，使用参数创建一个SimpleCacheBackend实例对象，并返回
             config - Backend配置相关的Dict，可以为None
         """
+        super().__init__()
+
         if not (config is None or isinstance(config, dict)):
             raise ValueError("`config` must be an instance of dict or None")
         self.config = config
         self._cache_context = None
-        self.key_prefix = config.get('CACHE_KEY_PREFIX', '')
+        if config is not None:
+            self.key_prefix = config.get('CACHE_KEY_PREFIX', str(self.__class__.__name__).upper())
+        else:
+            # 使用self.__class__.__name__做为prefix
+            self.key_prefix = str(self.__class__.__name__).upper()
         # setup
         self.setup_config(config)
 
@@ -224,14 +234,17 @@ class SimpleCacheBackend(CacheBackend):
         """
         self._cache_context = SimpleCacheDictContext()
 
-    def destroy_cache_context(self):
+    async def destroy_cache_context(self):
         """
         Implement function from CacheBackendContext interface.
         @See CacheBackendContext.destroy_cache_context
         """
         if not self._cache_context:
             return
-        self._cache_context.destory()
+        self._cache_context.destroy()
+        self._cache_context = None
+        # noop just wait
+        return await asyncio.sleep(0.01)
 
     def get_cache(self):
         with self.get_cache_context() as cache_dict:
@@ -450,7 +463,6 @@ class RedisContext(CacheContext):
         Proxy function for internal cache object.
         @See CacheContext.create
         """
-        raise NotImplementedError
 
     @abstractmethod
     async def destroy(self):
@@ -458,26 +470,41 @@ class RedisContext(CacheContext):
         Proxy function for internal cache object.
         @See CacheContext.destroy
         """
-        raise NotImplementedError
 
 
 class RedisBackend(CacheBackend):
     __metaclass__ = ABCMeta
 
     def __init__(self, config=None):
+        """
+        __init__构造函数，使用参数创建一个RedisBackend实例对象，抽象类不能被实例化
+            config - Backend配置相关的Dict，可以为None
+        """
+        super().__init__()
         if not (config is None or isinstance(config, dict)):
             raise ValueError("`config` must be an instance of dict or None")
         self._redis_cache_context = None
 
-        self.redis_scheme = config.get('CACHE_REDIS_SCHEME', 'redis')
-        self.redis_host = config.get('CACHE_REDIS_HOST', 'localhost')
-        self.redis_port = config.get('CACHE_REDIS_PORT', 6379)
-        self.redis_user = config.get('CACHE_REDIS_USER', '')
-        self.redis_password = config.get('CACHE_REDIS_PASSWORD', '')
-        self.redis_db = config.get('CACHE_REDIS_DATABASE', 0)
-        self.key_prefix = config.get('CACHE_KEY_PREFIX', '')
-
-        self.redis_uri = config.get('CACHE_SCHEME_URI', None)
+        if config is not None:
+            self.redis_scheme = config.get('CACHE_REDIS_SCHEME', 'redis')
+            self.redis_host = config.get('CACHE_REDIS_HOST', 'localhost')
+            self.redis_port = config.get('CACHE_REDIS_PORT', 6379)
+            self.redis_user = config.get('CACHE_REDIS_USER', '')
+            self.redis_password = config.get('CACHE_REDIS_PASSWORD', '')
+            self.redis_db = config.get('CACHE_REDIS_DATABASE', '')
+            # 默认使用self.__class__.__name__做为prefix
+            self.key_prefix = config.get('CACHE_KEY_PREFIX', str(self.__class__.__name__).upper())
+            self.redis_uri = config.get('CACHE_SCHEME_URI', None)
+        else:
+            self.redis_scheme = 'redis'
+            self.redis_host = 'localhost'
+            self.redis_port = 6379
+            self.redis_user = ''
+            self.redis_password = ''
+            self.redis_db = ''
+            # 使用self.__class__.__name__做为prefix
+            self.key_prefix = str(self.__class__.__name__).upper()
+            self.redis_uri = None
 
         self.setup_config(config)
 
@@ -519,4 +546,70 @@ class RedisBackend(CacheBackend):
         """
         if not self._redis_cache_context:
             return
-        return await self._redis_cache_context.destory()
+        await self._redis_cache_context.destroy()
+        self._redis_cache_context = None
+        # just wait
+        return await asyncio.sleep(0.01)
+
+    @abstractmethod
+    def clear(self):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.clear
+        """
+
+    @abstractmethod
+    def get(self, *args, **kwargs):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.get
+        """
+
+    @abstractmethod
+    def set(self, *args, **kwargs):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.set
+        """
+
+    @abstractmethod
+    def add(self, *args, **kwargs):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.clear
+        """
+
+    @abstractmethod
+    def delete(self, *args, **kwargs):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.clear
+        """
+
+    @abstractmethod
+    def delete_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.delete_many
+        """
+
+    @abstractmethod
+    def get_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.get_many
+        """
+
+    @abstractmethod
+    def set_many(self, *args, **kwargs):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.set_many
+        """
+
+    @abstractmethod
+    def execute(self, *args, **kwargs):
+        """
+        Implement function from CacheBackendContext interface
+        @See CacheBackend.execute
+        """

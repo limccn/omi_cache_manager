@@ -38,25 +38,24 @@ def async_method_in_loop(func):
 
     return async_method_wrapper
 
-
-def cached(app, cache):
-    """
-    Decorator cache a function/method return to cache manger
-    """
-
-    def decorator(func):
-        @functools.wraps(func)
-        async def _inner(*args, **kwargs):
-            key = func.__name__
-            res = await cache.get(key, (args, kwargs))
-            if res:
-                print('using cache: {}'.format(res))
-            else:
-                print('cache miss')
-                res = func(*args, **kwargs)
-                await cache.set(key, res, (args, kwargs))
-            return res
-
-        return _inner
-
-    return decorator
+# def cached(app, cache):
+#     """
+#     Decorator cache a function/method return to cache manger
+#     """
+#
+#     def decorator(func):
+#         @functools.wraps(func)
+#         async def _inner(*args, **kwargs):
+#             key = func.__name__
+#             res = await cache.get(key, (args, kwargs))
+#             if res:
+#                 print('using cache: {}'.format(res))
+#             else:
+#                 print('cache miss')
+#                 res = func(*args, **kwargs)
+#                 await cache.set(key, res, (args, kwargs))
+#             return res
+#
+#         return _inner
+#
+#     return decorator
