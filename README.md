@@ -25,6 +25,16 @@ $python setup.py install
  # use aredis as backend
  $pip install aredis
 ```  
+
+Backend support list
+
+| Backend Name | Type | Module | Class | Alias |
+|-|-|-|-|
+|null | Simulate | omi_cache_manager.backends | NullCacheBackend | null_cache |
+|simple map | Memory | omi_cache_manager.backends | SimpleCacheBackend | simple_cache |
+|[aioredis](https://github.com/aio-libs/aioredis/) | Async/Sync | omi_cache_manager.aio_redis_backend | AIORedisBackend | aioredis |
+|[aredis](https://github.com/NoneGG/aredis) | Async/Sync | omi_cache_manager.aredis_backend | ARedisBackend | aredis |
+
 3.Apply to your project.
 
 ```python
